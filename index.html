@@ -3,20 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>360 Derece VR Ayna Deneyimi</title>
+    <title>VR Passthrough Ayna Deneyimi</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-</head>
-<body style="margin: 0; overflow: hidden; background-color: #000;">
+    <style>
+        /* Standart Web Arayüzü İçin CSS */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-    <a-scene vr-mode-ui="enabled: true">
-        
+        /* İlk açılıştaki ikiye bölünmüş düz ekran yapısı */
+        .preview-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1; /* Buton ve videoların A-frame'in önünde durması için */
+            pointer-events: none; /* Buton tıklamalarını engellememesi için */
+        }
+
+        .preview-screen {
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .preview-screen video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Sol ekranın ayna simetrisi */
+        .left-preview video {
+            transform: scaleX(-1);
+        }
+
+        /* Alt Kısımdaki VR Başlatma Butonu */
+        .vr-btn-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        .vr-start-button {
+            background: linear-gradient(135deg, #ff007f, #7f00ff);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .vr-start-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* VR Moda geçildiğinde web arayüzünü gizlemek için sınıf */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="webPreview" class="preview-container">
+        <div class="preview-screen left-preview">
+            <video class="webcam-feed" autoplay playsinline muted></video>
+        </div>
+        <div class="preview-screen right-preview">
+            <video class="webcam-feed" autoplay playsinline muted></video>
+        </div>
+    </div>
+
+    <div id="buttonContainer" class="vr-btn-container">
+        <button class="vr-start-button" onclick="enterVRMode()">VR Modunu Başlat</button>
+    </div>
+
+    <a-scene vr-mode-ui="enabled: false">
         <a-assets>
-            <video id="webcam" autoplay playsinline muted loop crossOrigin="anonymous"></video>
+            <video id="vrWebcam" autoplay playsinline muted loop crossOrigin="anonymous"></video>
         </a-assets>
 
         <a-entity camera look-controls position="0 0 0"></a-entity>
 
-        <a-sphere src="#webcam" 
+        <a-sphere src="#vrWebcam" 
                   radius="100" 
                   phi-length="180"
                   phi-start="90"
@@ -27,7 +114,7 @@
                   material="shader: flat; side: double;">
         </a-sphere>
 
-        <a-sphere src="#webcam" 
+        <a-sphere src="#vrWebcam" 
                   radius="99" 
                   phi-length="180"
                   phi-start="90"
@@ -38,18 +125,19 @@
                   scale="-1 1 1"
                   material="shader: flat; side: double;">
         </a-sphere>
-
     </a-scene>
 
     <script>
-        async function startPassthrough() {
-            const video = document.querySelector('#webcam');
-            
+        const sceneEl = document.querySelector('a-scene');
+        const vrWebcam = document.querySelector('#vrWebcam');
+        const previewVideos = document.querySelectorAll('.webcam-feed');
+
+        // Kamerayı başlatma ve tüm video elementlerine dağıtma
+        async function initAllCameras() {
             const constraints = {
                 video: {
                     facingMode: { ideal: "environment" },
-                    // İçindelik hissi için olabildiğince yüksek çözünürlük
-                    width: { ideal: 1920 }, 
+                    width: { ideal: 1920 },
                     height: { ideal: 1080 }
                 },
                 audio: false
@@ -57,26 +145,38 @@
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-                video.play();
+                
+                // Hem düz önizleme videolarına hem de VR 360 küre videosuna aynı akışı veriyoruz
+                vrWebcam.srcObject = stream;
+                previewVideos.forEach(video => {
+                    video.srcObject = stream;
+                });
             } catch (err) {
-                console.error("Kamera hatası:", err);
-                alert("Lütfen HTTPS bağlantısını ve kamera izinlerini kontrol edin.");
+                console.error("Kamera erişim hatası:", err);
+                alert("Kamera başlatılamadı. Lütfen HTTPS protokolünü kontrol edin.");
             }
         }
 
-        window.addEventListener('DOMContentLoaded', startPassthrough);
+        // Alttaki butona tıklandığında çalışacak fonksiyon
+        function enterVRMode() {
+            // A-Frame sahnesini gerçek VR moduna (WebXR) sokar
+            sceneEl.enterVR();
+        }
 
-        // Meta Quest ve VR Box için Göz Ayrımı (Stereoscopic Layer) Optimizasyonu
-        // VR moduna geçildiğinde sol ve sağ gözün sadece kendi küresini görmesini tetikler
-        document.querySelector('a-scene').addEventListener('enter-vr', function () {
-            const spheres = document.querySelectorAll('a-sphere');
-            // VR modunda derinlik algısını bozmamak için küreler göz hareketine göre optimize edilir
-            if (this.is('vr-mode')) {
-                // Not: Saf WebXR katmanları cihaz kısıtlamalarına takılabileceği için 
-                // kürelerin açısını gözün odak merkezine (fov) göre tam 180 dereceye sabitledik.
-            }
+        // VR moduna girildiğinde düz ekranı ve butonu gizle
+        sceneEl.addEventListener('enter-vr', function () {
+            document.getElementById('webPreview').classList.add('hidden');
+            document.getElementById('buttonContainer').classList.add('hidden');
         });
+
+        // VR modundan çıkılırsa arayüzü geri getir
+        sceneEl.addEventListener('exit-vr', function () {
+            document.getElementById('webPreview').classList.remove('hidden');
+            document.getElementById('buttonContainer').classList.remove('hidden');
+        });
+
+        // Sayfa açıldığında sistem hazır olsun
+        window.addEventListener('DOMContentLoaded', initAllCameras);
     </script>
 </body>
 </html>
