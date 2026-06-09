@@ -3,31 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>VR Passthrough Mirror Screen</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Gerçek VR Passthrough Ayna Deneyimi</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 </head>
-<body>
+<body style="margin: 0; overflow: hidden; background-color: #000;">
 
-    <div class="vr-container">
-        <div class="screen-view left-screen">
-            <video id="leftVideo" autoplay playsinline muted></video>
-        </div>
+    <a-scene vr-mode-ui="enabled: true">
         
-        <div class="screen-view right-screen">
-            <video id="rightVideo" autoplay playsinline muted></video>
-        </div>
-    </div>
+        <a-assets>
+            <video id="webcam" autoplay playsinline muted loop crossOrigin="anonymous"></video>
+        </a-assets>
+
+        <a-entity camera look-controls position="0 1.6 0"></a-entity>
+
+        <a-video src="#webcam" 
+                 position="1.5 1.6 -3" 
+                 width="2.8" 
+                 height="2.1">
+        </a-video>
+
+        <a-video src="#webcam" 
+                 position="-1.5 1.6 -3" 
+                 width="2.8" 
+                 height="2.1" 
+                 scale="-1 1 1">
+        </a-video>
+
+    </a-scene>
 
     <script>
-        const leftVideo = document.getElementById('leftVideo');
-        const rightVideo = document.getElementById('rightVideo');
-
-        // Cihazın gerçek kamerasına erişim sağlama
-        async function initCamera() {
+        // Cihazın gerçek dış kamerasını başlatma fonksiyonu
+        async function startPassthrough() {
+            const video = document.querySelector('#webcam');
+            
             const constraints = {
                 video: {
-                    // Mobil cihazlarda arka kamerayı, VR başlıklarda ana dış kamerayı seçmeye zorlar
-                    facingMode: { ideal: "environment" },
+                    facingMode: { ideal: "environment" }, // Arka/Dış kamera
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
                 },
@@ -36,18 +47,16 @@
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // Tek bir kamera akışını her iki video elementine de bağlıyoruz
-                leftVideo.srcObject = stream;
-                rightVideo.srcObject = stream;
-            } catch (error) {
-                console.error("Kamera erişimi sağlanamadı:", error);
-                alert("Kameraya erişilemedi. Lütfen HTTPS protokolü ve kamera izinlerini kontrol edin.");
+                video.srcObject = stream;
+                video.play();
+            } catch (err) {
+                console.error("Kamera akışı başlatılamadı:", err);
+                alert("Kameraya ulaşılamadı. Lütfen HTTPS bağlantısı kullandığınızdan emin olun.");
             }
         }
 
-        // Sayfa yüklendiğinde kamerayı başlat
-        window.addEventListener('DOMContentLoaded', initCamera);
+        // Sayfa yüklenir yüklenmez kamerayı arkada hazırla
+        window.addEventListener('DOMContentLoaded', startPassthrough);
     </script>
 </body>
 </html>
