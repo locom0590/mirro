@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>VR Passthrough Ayna Deneyimi</title>
+    <title>Gelişmiş VR Passthrough Ayna Deneyimi</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
-        /* Standart Web Arayüzü İçin CSS */
         body, html {
             margin: 0;
             padding: 0;
@@ -14,10 +13,9 @@
             height: 100%;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* İlk açılıştaki ikiye bölünmüş düz ekran yapısı */
+        /* İlk açılıştaki ikiye bölünmüş düz web önizlemesi */
         .preview-container {
             display: flex;
             width: 100vw;
@@ -25,14 +23,14 @@
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1; /* Buton ve videoların A-frame'in önünde durması için */
-            pointer-events: none; /* Buton tıklamalarını engellememesi için */
+            z-index: 1;
         }
 
         .preview-screen {
             flex: 1;
             height: 100%;
             overflow: hidden;
+            background-color: #000;
         }
 
         .preview-screen video {
@@ -46,38 +44,47 @@
             transform: scaleX(-1);
         }
 
-        /* Alt Kısımdaki VR Başlatma Butonu */
-        .vr-btn-container {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-        }
-
-        .vr-start-button {
-            background: linear-gradient(135deg, #ff007f, #7f00ff);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .vr-start-button:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-
-        /* VR Moda geçildiğinde web arayüzünü gizlemek için sınıf */
+        /* VR Moduna girildiğinde düz ekranı tamamen yok etmek için */
         .hidden {
             display: none !important;
+        }
+
+        /* A-FRAME'İN ORİJİNAL BUTONUNU ALT ORTAYA TAŞIMA VE ÖZELLEŞTİRME 
+           Tarayıcıların engellemediği tek buton budur.
+        */
+        .a-enter-vr {
+            position: fixed !important;
+            bottom: 40px !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+            width: 180px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #ff007f, #7f00ff) !important;
+            border-radius: 25px !important;
+            box-shadow: 0 5px 20px rgba(127, 0, 255, 0.5) !important;
+            border: none !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* Orijinal küçük gözlük ikonunu gizleyip yerine yazı yerleştiriyoruz */
+        .a-enter-vr-button {
+            background-image: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            content: "" !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .a-enter-vr-button::after {
+            content: "VR BAŞLAT" !important;
+            color: #fff !important;
+            font-family: sans-serif !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+            letter-spacing: 1px !important;
         }
     </style>
 </head>
@@ -92,11 +99,7 @@
         </div>
     </div>
 
-    <div id="buttonContainer" class="vr-btn-container">
-        <button class="vr-start-button" onclick="enterVRMode()">VR Modunu Başlat</button>
-    </div>
-
-    <a-scene vr-mode-ui="enabled: false">
+    <a-scene vr-mode-ui="enabled: true">
         <a-assets>
             <video id="vrWebcam" autoplay playsinline muted loop crossOrigin="anonymous"></video>
         </a-assets>
@@ -132,7 +135,7 @@
         const vrWebcam = document.querySelector('#vrWebcam');
         const previewVideos = document.querySelectorAll('.webcam-feed');
 
-        // Kamerayı başlatma ve tüm video elementlerine dağıtma
+        // Kamera akışını başlatma
         async function initAllCameras() {
             const constraints = {
                 video: {
@@ -146,36 +149,26 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
-                // Hem düz önizleme videolarına hem de VR 360 küre videosuna aynı akışı veriyoruz
                 vrWebcam.srcObject = stream;
                 previewVideos.forEach(video => {
                     video.srcObject = stream;
                 });
             } catch (err) {
                 console.error("Kamera erişim hatası:", err);
-                alert("Kamera başlatılamadı. Lütfen HTTPS protokolünü kontrol edin.");
+                alert("Kameraya ulaşılamadı. Lütfen sitenin HTTPS olduğundan emin olun.");
             }
         }
 
-        // Alttaki butona tıklandığında çalışacak fonksiyon
-        function enterVRMode() {
-            // A-Frame sahnesini gerçek VR moduna (WebXR) sokar
-            sceneEl.enterVR();
-        }
-
-        // VR moduna girildiğinde düz ekranı ve butonu gizle
+        // VR Moduna geçiş sağlandığında düz ekranı tamamen kapat
         sceneEl.addEventListener('enter-vr', function () {
             document.getElementById('webPreview').classList.add('hidden');
-            document.getElementById('buttonContainer').classList.add('hidden');
         });
 
-        // VR modundan çıkılırsa arayüzü geri getir
+        // VR Modundan çıkıldığında düz ekranı geri aç
         sceneEl.addEventListener('exit-vr', function () {
             document.getElementById('webPreview').classList.remove('hidden');
-            document.getElementById('buttonContainer').classList.remove('hidden');
         });
 
-        // Sayfa açıldığında sistem hazır olsun
         window.addEventListener('DOMContentLoaded', initAllCameras);
     </script>
 </body>
