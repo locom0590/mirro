@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>VR Passthrough Mirror Screen</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="vr-container">
+        <div class="screen-view left-screen">
+            <video id="leftVideo" autoplay playsinline muted></video>
+        </div>
+        
+        <div class="screen-view right-screen">
+            <video id="rightVideo" autoplay playsinline muted></video>
+        </div>
+    </div>
+
+    <script>
+        const leftVideo = document.getElementById('leftVideo');
+        const rightVideo = document.getElementById('rightVideo');
+
+        // Cihazın gerçek kamerasına erişim sağlama
+        async function initCamera() {
+            const constraints = {
+                video: {
+                    // Mobil cihazlarda arka kamerayı, VR başlıklarda ana dış kamerayı seçmeye zorlar
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Tek bir kamera akışını her iki video elementine de bağlıyoruz
+                leftVideo.srcObject = stream;
+                rightVideo.srcObject = stream;
+            } catch (error) {
+                console.error("Kamera erişimi sağlanamadı:", error);
+                alert("Kameraya erişilemedi. Lütfen HTTPS protokolü ve kamera izinlerini kontrol edin.");
+            }
+        }
+
+        // Sayfa yüklendiğinde kamerayı başlat
+        window.addEventListener('DOMContentLoaded', initCamera);
+    </script>
+</body>
+</html>
