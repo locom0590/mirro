@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Gelişmiş VR Passthrough Ayna Deneyimi</title>
+    <title>Kesin Çözümlü VR Passthrough</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
         body, html {
@@ -15,7 +15,7 @@
             background-color: #000;
         }
 
-        /* İlk açılıştaki ikiye bölünmüş düz web önizlemesi */
+        /* 2D Önizleme Ekranı */
         .preview-container {
             display: flex;
             width: 100vw;
@@ -23,7 +23,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1;
+            z-index: 5; /* A-frame sahnesinin önünde dursun */
         }
 
         .preview-screen {
@@ -39,47 +39,41 @@
             object-fit: cover;
         }
 
-        /* Sol ekranın ayna simetrisi */
         .left-preview video {
-            transform: scaleX(-1);
+            transform: scaleX(-1); /* Sol göz ayna görüntüsü */
         }
 
-        /* VR Moduna girildiğinde düz ekranı tamamen yok etmek için */
         .hidden {
             display: none !important;
         }
 
-        /* A-FRAME'İN ORİJİNAL BUTONUNU ALT ORTAYA TAŞIMA VE ÖZELLEŞTİRME 
-           Tarayıcıların engellemediği tek buton budur.
-        */
+        /* Özelleştirilmiş Orijinal VR Başlat Butonu */
         .a-enter-vr {
             position: fixed !important;
             bottom: 40px !important;
             left: 50% !important;
             right: auto !important;
             transform: translateX(-50%) !important;
-            width: 180px !important;
-            height: 50px !important;
-            background: linear-gradient(135deg, #ff007f, #7f00ff) !important;
-            border-radius: 25px !important;
-            box-shadow: 0 5px 20px rgba(127, 0, 255, 0.5) !important;
+            width: 200px !important;
+            height: 55px !important;
+            background: linear-gradient(135deg, #00f2fe, #4facfe) !important;
+            border-radius: 30px !important;
+            box-shadow: 0 5px 25px rgba(79, 172, 254, 0.6) !important;
             border: none !important;
-            transition: all 0.3s ease !important;
+            z-index: 10 !important; /* Her şeyin önünde dursun */
         }
 
-        /* Orijinal küçük gözlük ikonunu gizleyip yerine yazı yerleştiriyoruz */
         .a-enter-vr-button {
             background-image: none !important;
             width: 100% !important;
             height: 100% !important;
-            content: "" !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
         }
 
         .a-enter-vr-button::after {
-            content: "VR BAŞLAT" !important;
+            content: "360° VR BAŞLAT" !important;
             color: #fff !important;
             font-family: sans-serif !important;
             font-size: 16px !important;
@@ -92,10 +86,10 @@
 
     <div id="webPreview" class="preview-container">
         <div class="preview-screen left-preview">
-            <video class="webcam-feed" autoplay playsinline muted></video>
+            <video id="leftCam" autoplay playsinline muted></video>
         </div>
         <div class="preview-screen right-preview">
-            <video class="webcam-feed" autoplay playsinline muted></video>
+            <video id="rightCam" autoplay playsinline muted></video>
         </div>
     </div>
 
@@ -120,21 +114,21 @@
                   scale="-1 1 1"
                   material="shader: flat; side: double;">
         </a-sphere>
-
     </a-scene>
 
     <script>
         const sceneEl = document.querySelector('a-scene');
-        const vrWebcam = document.querySelector('#vrWebcam');
-        const previewVideos = document.querySelectorAll('.webcam-feed');
+        const vrWebcam = document.getElementById('vrWebcam');
+        const leftCam = document.getElementById('leftCam');
+        const rightCam = document.getElementById('rightCam');
 
-        // Kamera akışını başlatma
-        async function initAllCameras() {
+        // Tarayıcıdan tek bir kamera akışı isteyip tüm ekranlara dağıtan fonksiyon
+        async function startCamera() {
             const constraints = {
                 video: {
-                    facingMode: { ideal: "environment" },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
+                    facingMode: { ideal: "environment" }, // Arka/Dış kamera
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 },
                 audio: false
             };
@@ -142,27 +136,34 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
+                // Tek bir kamera akışını 3 farklı video elementine paylaştırıyoruz
                 vrWebcam.srcObject = stream;
-                previewVideos.forEach(video => {
-                    video.srcObject = stream;
-                });
+                leftCam.srcObject = stream;
+                rightCam.srcObject = stream;
+
+                // Videoların oynatıldığından emin olalım
+                vrWebcam.play();
+                leftCam.play();
+                rightCam.play();
+
             } catch (err) {
-                console.error("Kamera erişim hatası:", err);
-                alert("Kameraya ulaşılamadı. Lütfen sitenin HTTPS olduğundan emin olun.");
+                console.error("Kamera erişim hatası detayları:", err);
+                alert("Kameraya erişilemedi. Lütfen adresteki 'https://' ibaresini ve tarayıcı izinlerini kontrol edin.");
             }
         }
 
-        // VR Moduna geçiş sağlandığında düz ekranı tamamen kapat
+        // VR Moduna girildiğinde düz önizlemeyi gizle
         sceneEl.addEventListener('enter-vr', function () {
             document.getElementById('webPreview').classList.add('hidden');
         });
 
-        // VR Modundan çıkıldığında düz ekranı geri aç
+        // VR Modundan çıkıldığında düz önizlemeyi geri aç
         sceneEl.addEventListener('exit-vr', function () {
             document.getElementById('webPreview').classList.remove('hidden');
         });
 
-        window.addEventListener('DOMContentLoaded', initAllCameras);
+        // Sayfa yüklenir yüklenmez kamerayı tetikle
+        window.addEventListener('DOMContentLoaded', startCamera);
     </script>
 </body>
 </html>
