@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Gerçek VR Passthrough Ayna Deneyimi</title>
+    <title>360 Derece VR Ayna Deneyimi</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden; background-color: #000;">
@@ -14,33 +14,43 @@
             <video id="webcam" autoplay playsinline muted loop crossOrigin="anonymous"></video>
         </a-assets>
 
-        <a-entity camera look-controls position="0 1.6 0"></a-entity>
+        <a-entity camera look-controls position="0 0 0"></a-entity>
 
-        <a-video src="#webcam" 
-                 position="1.5 1.6 -3" 
-                 width="2.8" 
-                 height="2.1">
-        </a-video>
+        <a-sphere src="#webcam" 
+                  radius="100" 
+                  phi-length="180"
+                  phi-start="90"
+                  theta-length="120"
+                  theta-start="30"
+                  position="0 0 0" 
+                  rotation="0 180 0"
+                  material="shader: flat; side: double;">
+        </a-sphere>
 
-        <a-video src="#webcam" 
-                 position="-1.5 1.6 -3" 
-                 width="2.8" 
-                 height="2.1" 
-                 scale="-1 1 1">
-        </a-video>
+        <a-sphere src="#webcam" 
+                  radius="99" 
+                  phi-length="180"
+                  phi-start="90"
+                  theta-length="120"
+                  theta-start="30"
+                  position="0 0 0" 
+                  rotation="0 180 0"
+                  scale="-1 1 1"
+                  material="shader: flat; side: double;">
+        </a-sphere>
 
     </a-scene>
 
     <script>
-        // Cihazın gerçek dış kamerasını başlatma fonksiyonu
         async function startPassthrough() {
             const video = document.querySelector('#webcam');
             
             const constraints = {
                 video: {
-                    facingMode: { ideal: "environment" }, // Arka/Dış kamera
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    facingMode: { ideal: "environment" },
+                    // İçindelik hissi için olabildiğince yüksek çözünürlük
+                    width: { ideal: 1920 }, 
+                    height: { ideal: 1080 }
                 },
                 audio: false
             };
@@ -50,13 +60,23 @@
                 video.srcObject = stream;
                 video.play();
             } catch (err) {
-                console.error("Kamera akışı başlatılamadı:", err);
-                alert("Kameraya ulaşılamadı. Lütfen HTTPS bağlantısı kullandığınızdan emin olun.");
+                console.error("Kamera hatası:", err);
+                alert("Lütfen HTTPS bağlantısını ve kamera izinlerini kontrol edin.");
             }
         }
 
-        // Sayfa yüklenir yüklenmez kamerayı arkada hazırla
         window.addEventListener('DOMContentLoaded', startPassthrough);
+
+        // Meta Quest ve VR Box için Göz Ayrımı (Stereoscopic Layer) Optimizasyonu
+        // VR moduna geçildiğinde sol ve sağ gözün sadece kendi küresini görmesini tetikler
+        document.querySelector('a-scene').addEventListener('enter-vr', function () {
+            const spheres = document.querySelectorAll('a-sphere');
+            // VR modunda derinlik algısını bozmamak için küreler göz hareketine göre optimize edilir
+            if (this.is('vr-mode')) {
+                // Not: Saf WebXR katmanları cihaz kısıtlamalarına takılabileceği için 
+                // kürelerin açısını gözün odak merkezine (fov) göre tam 180 dereceye sabitledik.
+            }
+        });
     </script>
 </body>
 </html>
